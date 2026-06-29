@@ -333,6 +333,8 @@ const RAW_RESOURCES = [
 export function parseAggregatedData(
   account: any,
   fallbackIdToken?: string,
+  features?: Array<{ name: string; active: boolean }>,
+  events?: Array<{ id: string; name: string; code: string; startTime: string; endTime: string; minLevelIndex: number }>,
 ): PlayerAccountInfo {
   if (!account) {
     throw new Error('No account data returned from CraftWorld');
@@ -530,6 +532,10 @@ export function parseAggregatedData(
     allRawData: { account, source: 'AggregatedCraftWorldDataQuery' },
     rawAccountData: account,
     rawFactoriesData: extractedFactories,
+
+    // Global features and events
+    features,
+    events,
   };
 
   // ─── Log summary ───
@@ -546,6 +552,12 @@ export function parseAggregatedData(
   console.log(`⭐ Workshop entries: ${(account.workshop || []).length}`);
   console.log(`🎯 Proficiencies: ${(account.proficiencies || []).length}`);
   console.log(`💰 Power: ${account.power}, XP: ${account.experiencePoints}`);
+  if (features && features.length > 0) {
+    console.log(`🌐 Features:`, features);
+  }
+  if (events && events.length > 0) {
+    console.log(`📅 Events:`, events);
+  }
   console.groupEnd();
 
   return result;
@@ -554,6 +566,6 @@ export function parseAggregatedData(
 // ─── Convenience: fetch + parse in one call ───
 
 export async function fetchFullPlayerData(idToken: string): Promise<PlayerAccountInfo> {
-  const { account } = await fetchAggregatedCraftWorldData(idToken);
-  return parseAggregatedData(account, idToken);
+  const { account, features, events } = await fetchAggregatedCraftWorldData(idToken);
+  return parseAggregatedData(account, idToken, features, events);
 }

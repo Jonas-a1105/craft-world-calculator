@@ -11,6 +11,8 @@ import { ResourceTable } from './components/ResourceTable/ResourceTable';
 import { CoinCalculatorModal } from './components/CoinCalculatorModal/CoinCalculatorModal';
 import { BonusPanel } from './components/BonusPanel/BonusPanel';
 import { PowerCalculator } from './components/PowerCalculator/PowerCalculator';
+import { ProfitabilityPanel } from './components/ProfitabilityPanel/ProfitabilityPanel';
+import { ProfitSimulator } from './components/ProfitSimulator/ProfitSimulator';
 import { MasterpieceSimulator } from './components/MasterpieceSimulator/MasterpieceSimulator';
 import anime from 'animejs';
 import { useRealTimePrices } from './hooks/useRealTimePrices';
@@ -19,14 +21,15 @@ import { usePriceHistory } from './hooks/usePriceHistory';
 import { AccountConnector } from './components/AccountConnector/AccountConnector';
 import { ResourceSelectorDropdown } from './components/ResourceSelectorDropdown/ResourceSelectorDropdown';
 import { fetchTokenBalances } from './utils/priceService';
-import { fetchPlayerAccount, fetchPlayerAccountWithJWT, type PlayerAccountInfo, type PlayerMine } from './utils/accountService';
-import { authenticateWithRonin, clearAuth, validateJWT, getValidToken } from './utils/roninAuth';
+import { fetchPlayerAccount, fetchPlayerAccountWithJWT, type PlayerAccountInfo, type PlayerMine, type FactoryInstanceData } from './utils/accountService';
+import { authenticateWithRonin, clearAuth, getValidToken } from './utils/roninAuth';
 import { resolveRNS, fetchFactoriesFromOnChain, fetchBalancesFromOnChain } from './utils/roninWeb3Service';
 import { fetchFullPlayerData } from './utils/craftWorldService';
+import { initFactoryData, getFactoryDataVersion } from './utils/factoryDataService';
 import { ethers } from 'ethers';
 
 import './styles/global.css';
-import { getCategory, getEmoji } from './utils/gameHelpers';
+import { getCategory, getEmoji, toSpeedMult, isActiveBooster, isTimeActive, getWorkshopTier } from './utils/gameHelpers';
 
 interface PriceCountdownProps {
   lastUpdate: number;
@@ -55,7 +58,7 @@ export const App: React.FC = () => {
   const playerConfig = usePlayerConfig();
   const priceDeltas = usePriceHistory(prices);
   
-  const [activeTab, setActiveTab] = useState<'explorer' | 'production' | 'relations' | 'resources' | 'masterpiece'>(() => {
+  const [activeTab, setActiveTab] = useState<'explorer' | 'production' | 'relations' | 'resources' | 'masterpiece' | 'profitability'>(() => {
     return (localStorage.getItem('cw-active-tab') as any) || 'explorer';
   });
 
@@ -83,7 +86,9 @@ export const App: React.FC = () => {
     return saved ? parseInt(saved) : 10000;
   });
   const [showCoinCalc, setShowCoinCalc] = useState(false);
+  const [showLevelTools, setShowLevelTools] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [factoryDataVersion, setFactoryDataVersion] = useState(0);
 
   // Account Connection States
   const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem('cw-wallet-address') || '');
@@ -100,19 +105,21 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem('cw-account-info');
     return saved ? JSON.parse(saved) : null;
   });
+  const [factoryInstances, setFactoryInstances] = useState<FactoryInstanceData[]>([]);
   const [balances, setBalances] = useState<Record<string, number> | null>(() => {
     const saved = localStorage.getItem('cw-token-balances');
     return saved ? JSON.parse(saved) : null;
   });
   const [isSyncing, setIsSyncing] = useState(false);
-  const [refreshToken, setRefreshToken] = useState<string | null>(() => {
-    return localStorage.getItem('cw-refresh-token') || null;
-  });
   const [lastAutoRefresh, setLastAutoRefresh] = useState<number>(0);
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(30);
   const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const isSyncingRef = useRef(false); // Ref to avoid stale closure in interval
+
+  useEffect(() => {
+    initFactoryData().then(() => setFactoryDataVersion(getFactoryDataVersion()));
+  }, []);
 
   const levelSourceRef = useRef<'config' | 'slider' | 'idle'>('idle');
   const accountSyncedRef = useRef<string | null>(null);
@@ -413,6 +420,7 @@ export const App: React.FC = () => {
     // Extract worker speed bonuses per resource
     // Each worker has areaBoostValue and areaUuid → maps to area → resource symbol
     const workerBoostPerResource: Record<string, number> = {};
+    const workerBoostPerArea: Record<string, number> = {};
     if (accountInfo?.workers && rawAccount?.landPlots) {
       accountInfo.workers.forEach((worker: any) => {
         if (worker.areaUuid && worker.areaBoostValue > 0) {
@@ -420,6 +428,7 @@ export const App: React.FC = () => {
           if (resourceSymbol) {
             workerBoostPerResource[resourceSymbol] = (workerBoostPerResource[resourceSymbol] || 0) + worker.areaBoostValue;
           }
+          workerBoostPerArea[worker.areaUuid] = (workerBoostPerArea[worker.areaUuid] || 0) + worker.areaBoostValue;
         }
       });
     }
@@ -433,11 +442,8 @@ export const App: React.FC = () => {
             if (area.factories) {
               area.factories.forEach((f: any) => {
                 if (f.workerBoostIntervals) {
-                  const now = Date.now();
                   f.workerBoostIntervals.forEach((wbi: any) => {
-                    const start = new Date(wbi.startTime).getTime();
-                    const end = new Date(wbi.endTime).getTime();
-                    if (now >= start && now <= end && wbi.boostValue > 0) {
+                    if (isTimeActive(wbi.startTime, wbi.endTime) && wbi.boostValue > 0) {
                       workerBoostPerResource[resSymbol] = (workerBoostPerResource[resSymbol] || 0) + wbi.boostValue;
                     }
                   });
@@ -450,24 +456,34 @@ export const App: React.FC = () => {
     }
 
     // Extract active factory boosters per resource
+    // API boostValue is a cycle-duration factor:
+    //   < 1 = speed boost (e.g. 0.5 → 2x speed)
+    //   > 1 = penalty (slower)
+    // We store it as a speed multiplier: cfg.boost = 1 / boostValue
     const boosterPerResource: Record<string, number> = {};
     if (rawAccount?.landPlots) {
       rawAccount.landPlots.forEach((plot: any) => {
         if (plot.areas) {
           plot.areas.forEach((area: any) => {
             const resSymbol = (area.symbol || '').toUpperCase();
+            // Check land-plot-level booster (applies to all areas in this plot)
+            if (plot.booster && isTimeActive(plot.booster.startTime, plot.booster.endTime) && isActiveBooster(plot.booster.boostValue)) {
+              const current = boosterPerResource[resSymbol] || 1;
+              const asMult = toSpeedMult(plot.booster.boostValue);
+              if (asMult > current) {
+                boosterPerResource[resSymbol] = asMult;
+              }
+            }
             if (area.factories) {
               area.factories.forEach((f: any) => {
-                const now = Date.now();
                 const checkBoosters = (boosters: any[]) => {
                   if (!boosters) return;
                   boosters.forEach((b: any) => {
-                    const start = new Date(b.startTime).getTime();
-                    const end = new Date(b.endTime).getTime();
-                    if (now >= start && now <= end && b.boostValue > 1) {
+                    if (isTimeActive(b.startTime, b.endTime) && isActiveBooster(b.boostValue)) {
                       const current = boosterPerResource[resSymbol] || 1;
-                      if (b.boostValue > current) {
-                        boosterPerResource[resSymbol] = b.boostValue;
+                      const asMult = toSpeedMult(b.boostValue);
+                      if (asMult > current) {
+                        boosterPerResource[resSymbol] = asMult;
                       }
                     }
                   });
@@ -480,6 +496,165 @@ export const App: React.FC = () => {
         }
       });
     }
+
+    // Extract mine-level boosters (basic resources like EARTH, WATER, etc.)
+    if (rawAccount?.mines) {
+      rawAccount.mines.forEach((mine: any) => {
+        const resSymbol = (mine.definition?.id || '').toUpperCase();
+        if (isActiveBooster(mine.boostValue)) {
+          const current = boosterPerResource[resSymbol] || 1;
+          const asMult = toSpeedMult(mine.boostValue);
+          if (asMult > current) {
+            boosterPerResource[resSymbol] = asMult;
+          }
+        }
+        if (mine.consumableBoosters) {
+          mine.consumableBoosters.forEach((b: any) => {
+            if (isTimeActive(b.startTime, b.endTime) && isActiveBooster(b.boostValue)) {
+              const current = boosterPerResource[resSymbol] || 1;
+              const asMult = toSpeedMult(b.boostValue);
+              if (asMult > current) {
+                boosterPerResource[resSymbol] = asMult;
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // ─── Detect global speed boost from active events/features ───
+    const BOOST_KEYWORDS = ['X2','DOUBLE','2X','X5','5X','X10','10X','SPEED','BOOST','FAST'];
+    let globalBoost = 1;
+    if (accountInfo?.features) {
+      accountInfo.features.forEach((f: any) => {
+        if (f.active) {
+          const name = (f.name || '').toUpperCase();
+          if (BOOST_KEYWORDS.some(kw => name.includes(kw))) {
+            if (name.includes('5') && (name.includes('X5') || name.includes('5X'))) globalBoost = Math.max(globalBoost, 5);
+            else if (name.includes('10') && (name.includes('X10') || name.includes('10X'))) globalBoost = Math.max(globalBoost, 10);
+            else globalBoost = Math.max(globalBoost, 2);
+            console.log(`🔍 Active global speed feature: ${f.name} → x${globalBoost}`);
+          }
+        }
+      });
+    }
+    if (accountInfo?.events) {
+      const now = Date.now();
+      accountInfo.events.forEach((evt: any) => {
+        const start = new Date(evt.startTime).getTime();
+        const end = new Date(evt.endTime).getTime();
+        if (now >= start && now <= end) {
+          const code = (evt.code || '').toUpperCase();
+          const name = (evt.name || '').toUpperCase();
+          const combined = code + ' ' + name;
+          if (BOOST_KEYWORDS.some(kw => combined.includes(kw))) {
+            if (combined.includes('5') && (combined.includes('X5') || combined.includes('5X'))) globalBoost = Math.max(globalBoost, 5);
+            else if (combined.includes('10') && (combined.includes('X10') || combined.includes('10X'))) globalBoost = Math.max(globalBoost, 10);
+            else globalBoost = Math.max(globalBoost, 2);
+            console.log(`🔍 Active global speed event: ${evt.code} → x${globalBoost}`);
+          }
+        }
+      });
+    }
+    if (globalBoost > 1) console.log(`🔍 Global speed boost active: x${globalBoost}`);
+
+    // ─── Apply global boost to ALL resources ───
+    if (globalBoost > 1) {
+      Object.keys(FACTORIES_DATA).forEach(key => {
+        boosterPerResource[key] = (boosterPerResource[key] || 1) * globalBoost;
+      });
+    }
+
+    // ─── Build per-factory instances with individual boost/worker data ───
+    const instances: FactoryInstanceData[] = [];
+    if (rawAccount?.landPlots) {
+      rawAccount.landPlots.forEach((plot: any) => {
+        let plotBoost = 1;
+        if (plot.booster && isTimeActive(plot.booster.startTime, plot.booster.endTime) && isActiveBooster(plot.booster.boostValue)) {
+          plotBoost = toSpeedMult(plot.booster.boostValue);
+        }
+        if (plot.areas) {
+          plot.areas.forEach((area: any) => {
+            if (area.factories) {
+              area.factories.forEach((f: any) => {
+                if (f.factory) {
+                  const symbol = (f.factory.definition?.id || f.factory.id || '').toUpperCase();
+                  if (!FACTORIES_DATA[symbol]) return;
+                  const level = Math.max(1, (f.factory.level ?? 0) + 1);
+                  let factoryBoost = 1;
+                  const checkB = (boosters: any[]) => {
+                    if (!boosters) return;
+                    boosters.forEach((b: any) => {
+                      if (isTimeActive(b.startTime, b.endTime) && isActiveBooster(b.boostValue)) {
+                        const asMult = toSpeedMult(b.boostValue);
+                        factoryBoost *= asMult;
+                      }
+                    });
+                  };
+                  checkB(f.boosters);
+                  checkB(f.consumableBoosters);
+                  const boostMult = factoryBoost * plotBoost;
+                  let workerPct = workerBoostPerArea[area.id] || 0;
+                  if (f.workerBoostIntervals) {
+                    f.workerBoostIntervals.forEach((wbi: any) => {
+                      if (isTimeActive(wbi.startTime, wbi.endTime) && wbi.boostValue > 0) {
+                        workerPct += wbi.boostValue;
+                      }
+                    });
+                  }
+                  const crafting = f.crafting || {};
+                  const isActive = (crafting.currentRunLevel ?? 0) > 0;
+                  instances.push({
+                    id: f.factory.id, symbol, level, boostMult, workerPct,
+                    globalBoostMult: globalBoost,
+                    isActive,
+                    currentRunLevel: crafting.currentRunLevel ?? 0,
+                    unclaimedUnits: crafting.unclaimedUnitsBeforeCurrentRun ?? 0,
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+    // Deduplicate by id (keep first occurrence with the richest data)
+    const seen = new Set<string>();
+    const dedupedInstances: FactoryInstanceData[] = [];
+    instances.forEach(inst => {
+      if (!seen.has(inst.id)) {
+        seen.add(inst.id);
+        dedupedInstances.push(inst);
+      }
+    });
+    setFactoryInstances(dedupedInstances);
+
+    // ─── Debug: log raw booster data from the API ───
+    if (rawAccount?.landPlots) {
+      rawAccount.landPlots.forEach((plot: any, pi: number) => {
+        if (plot.booster) {
+          console.log(`🔍 Plot ${pi} booster:`, JSON.stringify(plot.booster));
+        }
+        if (plot.areas) {
+          plot.areas.forEach((area: any, ai: number) => {
+            if (area.factories) {
+              area.factories.forEach((f: any, fi: number) => {
+                if (f.boosters?.length) {
+                  console.log(`🔍 Plot ${pi} Area ${ai} Factory ${fi} boosters:`, JSON.stringify(f.boosters));
+                }
+                if (f.consumableBoosters?.length) {
+                  console.log(`🔍 Plot ${pi} Area ${ai} Factory ${fi} consumableBoosters:`, JSON.stringify(f.consumableBoosters));
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+    console.log('🔍 Features:', JSON.stringify(accountInfo?.features));
+    console.log('🔍 Events:', JSON.stringify(accountInfo?.events));
+    console.log('🔍 Workshop (raw API):', JSON.stringify(accountInfo?.workshop));
+    console.log('🔍 Workshop global building level:', accountInfo?.workshopLevel);
 
     // Calculate a comprehensive fingerprint
     const profFingerprint = accountInfo?.proficiencies
@@ -524,12 +699,13 @@ export const App: React.FC = () => {
         }
       }
       
-      // Workshop level → speed % (each level = 9%)
+      // Workshop speed boost percent (tier-based lookup, Craft-Companion data)
       let wsLevel = 0;
       if (accountInfo?.workshop) {
         const ws = accountInfo.workshop.find(w => w.symbol.toUpperCase() === symbol);
         if (ws) {
-          wsLevel = ws.level * 9;
+          wsLevel = ws.level;
+          console.log(`🔍 Workshop for ${symbol}: level=${wsLevel}, tier=${getWorkshopTier(symbol)}`);
         }
       }
 
@@ -593,10 +769,9 @@ export const App: React.FC = () => {
   const handleRoninAuth = async () => {
     setIsSyncing(true);
     try {
-      const { address, jwtToken: token, refreshToken: rToken } = await authenticateWithRonin();
+      const { address, jwtToken: token } = await authenticateWithRonin();
       setRoninAddress(address);
       setJwtToken(token);
-      setRefreshToken(rToken);
       setWalletAddress(address);
 
       localStorage.setItem('cw-auth-token', token);
@@ -694,7 +869,6 @@ export const App: React.FC = () => {
     setWalletAddress('');
     setUserId('');
     setJwtToken(null);
-    setRefreshToken(null);
     setRoninAddress(null);
     setAccountInfo(null);
     setBalances(null);
@@ -899,6 +1073,12 @@ export const App: React.FC = () => {
           >
             <span className="tab-emoji">🏆</span> <span className="tab-text">OBRA MAESTRA</span>
           </button>
+          <button
+            className={`nav-tab-btn ${activeTab === 'profitability' ? 'nav-tab-btn-active' : ''}`}
+            onClick={() => setActiveTab('profitability')}
+          >
+            <span className="tab-emoji">📈</span> <span className="tab-text">RENTABILIDAD</span>
+          </button>
         </div>
         <div className="nav-right">
           {/* Status del RPC/API */}
@@ -986,7 +1166,7 @@ export const App: React.FC = () => {
         {activeTab === 'explorer' && (
           <div className="explorer-layout">
 
-            {/* MAIN AREA: CONNECTOR, DETAILS, SLIDER, CHART */}
+            {/* MAIN AREA: CONNECTOR, DETAILS */}
             <main className="explorer-main">
 
               <div className="factory-details-grid">
@@ -1007,28 +1187,48 @@ export const App: React.FC = () => {
                   currentLevelData={currentLvlData}
                   gameBalance={gameBalances?.[activeFactory] ?? undefined}
                   walletBalance={balances?.[activeFactory] ?? undefined}
-                />
-                <LevelSlider
-                  level={currentLevel}
-                  setLevel={setCurrentLevel}
-                  maxLevel={maxLevel}
-                  output={currentLvlData.output || 0}
-                  duration={currentLvlData.duration || '0:00:00'}
-                  durationSec={currentLvlData.duration_sec || 0}
-                  powerCost={currentLvlData.power_cost || 0}
-                  xpPerOutput={currentLvlData.xp_per_output || 0}
-                  costSymbol={currentLvlData.cost_symbol}
-                  costAmount={currentLvlData.cost_amount || 0}
-                  levels={levels}
-                  prices={prices}
+                  factoryInstances={factoryInstances}
+                  factoryDataVersion={factoryDataVersion}
                 />
               </div>
 
-              <ProgressionChart
-                levels={levels}
-                currentLevel={currentLevel}
-                setCurrentLevel={setCurrentLevel}
-              />
+              <button
+                className="hud-badge"
+                onClick={() => setShowLevelTools(prev => !prev)}
+                style={{
+                  marginTop: '12px',
+                  cursor: 'pointer',
+                  borderColor: showLevelTools ? 'rgba(250,64,96,0.4)' : 'rgba(250,64,96,0.15)',
+                }}
+              >
+                <span className="hud-badge-value">
+                  {showLevelTools ? '▼ Ocultar nivel y proyección' : '▶ Nivel y proyección de producción'}
+                </span>
+              </button>
+
+              {showLevelTools && (
+                <>
+                  <LevelSlider
+                    level={currentLevel}
+                    setLevel={setCurrentLevel}
+                    maxLevel={maxLevel}
+                    output={currentLvlData.output || 0}
+                    duration={currentLvlData.duration || '0:00:00'}
+                    durationSec={currentLvlData.duration_sec || 0}
+                    powerCost={currentLvlData.power_cost || 0}
+                    xpPerOutput={currentLvlData.xp_per_output || 0}
+                    costSymbol={currentLvlData.cost_symbol}
+                    costAmount={currentLvlData.cost_amount || 0}
+                    levels={levels}
+                    prices={prices}
+                  />
+                  <ProgressionChart
+                    levels={levels}
+                    currentLevel={currentLevel}
+                    setCurrentLevel={setCurrentLevel}
+                  />
+                </>
+              )}
             </main>
           </div>
         )}
@@ -1048,6 +1248,7 @@ export const App: React.FC = () => {
               setWorkers={(n) => playerConfig.updateField(activeFactory, 'workers', n)}
               boost={activeConfig.boost}
               setBoost={(n) => playerConfig.updateField(activeFactory, 'boost', n)}
+              levelYield={currentLvlData.yield}
             />
 
             {/* CARD 5: CALCULATOR */}
@@ -1074,6 +1275,13 @@ export const App: React.FC = () => {
             <PowerCalculator
               playerConfig={playerConfig.config}
               prices={prices}
+            />
+
+            {/* SIMULADOR DE RENTABILIDAD */}
+            <ProfitSimulator
+              factoryName={activeFactory}
+              prices={prices}
+              playerCfg={activeConfig}
             />
           </BentoGrid>
         )}
@@ -1110,6 +1318,16 @@ export const App: React.FC = () => {
         {activeTab === 'masterpiece' && (
           <BentoGrid>
             <MasterpieceSimulator prices={prices} />
+          </BentoGrid>
+        )}
+
+        {activeTab === 'profitability' && (
+          <BentoGrid>
+            <ProfitabilityPanel
+              prices={prices}
+              playerConfig={playerConfig.config}
+              accountInfo={accountInfo}
+            />
           </BentoGrid>
         )}
       </div>

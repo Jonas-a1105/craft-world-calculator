@@ -82,6 +82,29 @@ export const LevelSlider: React.FC<LevelSliderProps> = ({
 
   const totalCoinCost = cumulativeCosts.reduce((sum, c) => sum + c.coinValue, 0);
   const totalUsdCost = cumulativeCosts.reduce((sum, c) => sum + c.usdValue, 0);
+
+  // ROI: additional daily revenue vs upgrade cost
+  const roiData = useMemo(() => {
+    if (level >= targetLevel || !levels.length || !prices) return null;
+
+    const currentLvlData = levels[level - 1];
+    const targetLvlData = levels[targetLevel - 1];
+    if (!currentLvlData || !targetLvlData) return null;
+
+    const currentProdPerDay = currentLvlData.production_per_day || 0;
+    const targetProdPerDay = targetLvlData.production_per_day || 0;
+    const extraUnitsPerDay = targetProdPerDay - currentProdPerDay;
+
+    const sellPrice = prices[costSymbol]?.sell || 0;
+    const extraDailyRevenue = extraUnitsPerDay * sellPrice;
+
+    if (extraDailyRevenue <= 0 || totalCoinCost <= 0) return null;
+
+    const daysToRoi = totalCoinCost / extraDailyRevenue;
+    const hoursToRoi = daysToRoi * 24;
+
+    return { extraUnitsPerDay, extraDailyRevenue, daysToRoi, hoursToRoi };
+  }, [level, targetLevel, levels, prices, totalCoinCost, costSymbol]);
   const progressPct = maxLevel > 1 ? ((level - 1) / (maxLevel - 1)) * 100 : 100;
   const targetPct = maxLevel > 1 ? ((targetLevel - 1) / (maxLevel - 1)) * 100 : 100;
 
@@ -271,6 +294,37 @@ export const LevelSlider: React.FC<LevelSliderProps> = ({
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '12px' }}>
             ⬆️ Selecciona un nivel objetivo mayor que el actual para ver los costos acumulados
           </p>
+        </div>
+      )}
+
+      {/* ROI Section */}
+      {roiData && (
+        <div className={styles.cumulativeSection}>
+          <h3 className={styles.cumulativeTitle}>📈 RETORNO DE INVERSIÓN (ROI)</h3>
+          <div className={styles.cumulativeList}>
+            <div className={styles.cumulativeRow}>
+              <span className={styles.cumulativeResName}>Producción extra/día</span>
+              <span className={styles.cumulativeQty}>{roiData.extraUnitsPerDay.toFixed(2)} uds</span>
+            </div>
+            <div className={styles.cumulativeRow}>
+              <span className={styles.cumulativeResName}>Ingreso extra/día</span>
+              <span className={styles.cumulativeCoin}>{roiData.extraDailyRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} COIN</span>
+            </div>
+            <div className={styles.cumulativeRow}>
+              <span className={styles.cumulativeResName}>Costo de mejora</span>
+              <span className={styles.cumulativeCoin}>{totalCoinCost.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} COIN</span>
+            </div>
+            <div className={styles.cumulativeRow} style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '8px', marginTop: '4px' }}>
+              <span className={styles.cumulativeResName} style={{ color: 'var(--color-green)', fontWeight: 700 }}>Recuperación estimada</span>
+              <span className={styles.cumulativeQty} style={{ color: 'var(--color-green)', fontWeight: 700, fontSize: '1rem' }}>
+                {roiData.daysToRoi < 1
+                  ? `${Math.round(roiData.hoursToRoi)} horas`
+                  : roiData.daysToRoi < 30
+                    ? `${roiData.daysToRoi.toFixed(1)} días`
+                    : `${(roiData.daysToRoi / 30).toFixed(1)} meses`}
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </section>

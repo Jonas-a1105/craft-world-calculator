@@ -1,0 +1,369 @@
+Recursos:
+Mud:
+Nivel 1: 1,500
+
+Nivel 2: 5,500
+
+Nivel 3: 13,500
+
+Nivel 4: 28,000
+
+Nivel 5: 56,500
+
+Nivel 6: 110,500
+
+Nivel 7: 213,500
+
+Nivel 8: 410,500
+
+Nivel 9: 785,000
+
+Nivel 10: 1,500,000
+
+Clay:
+Nivel 1: 1,000
+
+Nivel 2: 4,500
+
+Nivel 3: 10,500
+
+Nivel 4: 19,000
+
+Nivel 5: 33,000
+
+Nivel 6: 54,500
+
+Nivel 7: 88,000
+
+Nivel 8: 140,500
+
+Nivel 9: 222,500
+
+Nivel 10: 350,000
+
+Sand:
+Nivel 1: 500
+
+Nivel 2: 2,000
+
+Nivel 3: 5,000
+
+Nivel 4: 8,500
+
+Nivel 5: 14,500
+
+Nivel 6: 23,000
+
+Nivel 7: 35,500
+
+Nivel 8: 54,500
+
+Nivel 9: 83,000
+
+Nivel 10: 125,000
+
+Copper: 
+Nivel 1: 75
+
+Nivel 2: 325
+
+Nivel 3: 625
+
+Nivel 4: 975
+
+Nivel 5: 1,400
+
+Nivel 6: 1,875
+
+Nivel 7: 2475
+
+Nivel 8: 3,175
+
+Nivel 9: 4,000
+
+Nivel 10: 5,000
+
+Seawater:
+Nivel 1: 75
+
+Nivel 2: 300
+
+Nivel 3: 575
+
+Nivel 4: 875
+
+Nivel 5: 1,250
+
+Nivel 6: 1,700
+
+Nivel 7: 2,475
+
+Nivel 8: 3,175
+
+Nivel 9: 4,000
+
+Nivel 10: 5,000
+
+Heat:
+Nivel 1: 50
+
+Nivel 2: 250
+
+Nivel 3: 475
+
+Nivel 4: 725
+
+Nivel 5: 1,050
+
+Nivel 6: 1,400
+
+Nivel 7: 2,475
+
+Nivel 8: 3,175
+
+Nivel 9: 4,000
+
+Nivel 10: 5,000
+
+Algae and ceramics:
+Nivel 1: 45
+
+Nivel 2: 170
+
+Nivel 3: 320
+
+Nivel 4: 490
+
+Nivel 5: 700
+
+Nivel 6: 945
+
+Nivel 7: 1,240
+
+Nivel 8: 1,590
+
+Nivel 9: 2,005
+
+Nivel 10: 2,500
+
+Lava:
+Nivel 1: 40
+
+Nivel 2: 170
+
+Nivel 3: 320
+
+Nivel 4: 490
+
+Nivel 5: 700
+
+Nivel 6: 945
+
+Nivel 7: 1,240
+
+Nivel 8: 1,590
+
+Nivel 9: 2,005
+
+Nivel 10: 2,500
+
+Glass:
+Nivel 1: 20
+
+Nivel 2: 85
+
+Nivel 3: 155
+
+Nivel 4: 245
+
+Nivel 5: 345
+
+Nivel 6: 470
+
+Nivel 7: 615
+
+Nivel 8: 790
+
+Nivel 9: 1,000
+
+Nivel 10: 1,250
+
+Steel and Oxygen:
+Nivel 1: 25
+
+Nivel 2: 85
+
+Nivel 3: 155
+
+Nivel 4: 245
+
+Nivel 5: 345
+
+Nivel 6: 470
+
+Nivel 7: 615
+
+Nivel 8: 790
+
+Nivel 9: 1,000
+
+Nivel 10: 1,250
+
+Gas and stone:
+Nivel 1: 15
+
+Nivel 2: 50
+
+Nivel 3: 90
+
+Nivel 4: 145
+
+Nivel 5: 205
+
+Nivel 6: 275
+
+Nivel 7: 365
+
+Nivel 8: 470
+
+Nivel 9: 600
+
+Nivel 10: 750
+
+Steam:
+Nivel 1: 10
+
+Nivel 2: 50
+
+Nivel 3: 90
+
+Nivel 4: 145
+
+Nivel 5: 205
+
+Nivel 6: 275
+
+Nivel 7: 365
+
+Nivel 8: 470
+
+Nivel 9: 600
+
+Nivel 10: 750
+
+Screws and Fuel and Cement:
+Nivel 1: 10
+
+Nivel 2: 35
+
+Nivel 3: 65
+
+Nivel 4: 100
+
+Nivel 5: 140
+
+Nivel 6: 190
+
+Nivel 7: 250
+
+Nivel 8: 320
+
+Nivel 9: 400
+
+Nivel 10: 500
+
+Acid and Oil and sulfur:
+Nivel 1: 5
+
+Nivel 2: 20
+
+Nivel 3: 40
+
+Nivel 4: 60
+
+Nivel 5: 90
+
+Nivel 6: 125
+
+Nivel 7: 165
+
+Nivel 8: 215
+
+Nivel 9: 275
+
+Nivel 10: 350
+
+Plastics and Fiberglass and Energy:
+Nivel 1: 3
+
+Nivel 2: 15
+
+Nivel 3: 30
+
+Nivel 4: 47
+
+Nivel 5: 68
+
+Nivel 6: 93
+
+Nivel 7: 122
+
+Nivel 8: 157
+
+Nivel 9: 200
+
+Nivel 10: 250
+
+Hydrogen and Dynamite:
+Nivel 1: 1
+
+Nivel 2: 5
+
+Nivel 3: 10
+
+Nivel 4: 16
+
+Nivel 5: 24
+
+Nivel 6: 34
+
+Nivel 7: 45
+
+Nivel 8: 60
+
+Nivel 9: 78
+
+Nivel 10: 100
+
+
+
+Nivel de MaestríaBono de Rendimiento (Yield Bonus)
+Level 1
+102.0%
+
+Level 2
+102.9%
+
+Level 3
+103.3%
+
+Level 4
+103.7%
+
+Level 5
+104.2%
+
+Level 6
+104.4%
+
+Level 7
+104.6%
+
+Level 8
+104.8%
+
+Level 9
+105.0%
+
+Level 10
+105.3%

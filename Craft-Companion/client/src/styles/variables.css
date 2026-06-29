@@ -1,0 +1,44 @@
+:root {
+  --bg-body: #1b1b1e;
+  --bg-panel: rgba(15, 15, 15, 0.35);
+  --bg-card: rgba(30, 30, 30, 0.45);
+  --bg-card-hover: rgba(45, 45, 45, 0.65);
+  --bg-tab: rgba(25, 25, 25, 0.6);
+  --bg-tab-active: #ffffff;
+  --bg-input: rgba(20, 20, 20, 0.8);
+  --bg-button: #ffffff;
+
+  --text-primary: #ffffff;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-tab-active: #000000;
+  --text-button: #000000;
+
+  --color-blue: #38bdf8;
+  --color-green: #4ade80;
+  --color-purple: #818cf8;
+  --color-orange: #f97316;
+  --color-pink: #f472b6;
+  --color-red: #ef4444;
+  --color-yellow: #facc15;
+
+  --shadow-card: none;
+
+  --radius: 16px;
+
+  --font-main: 'Outfit', sans-serif;
+  --font-title: 'Press Start 2P', monospace;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --transition-fast: 0.12s ease;
+  --transition-normal: 0.15s ease;
+
+  /* Global Resource Card Item Styling Variables */
+  --bg-resource-item: rgba(30, 30, 30, 0.45);
+  --bg-resource-item-hover: rgba(45, 45, 45, 0.65);
+  --radius-resource-item: 16px;
+  --padding-resource-item-x: 14px;
+  --padding-resource-item-y: 10px;
+  --padding-resource-item-y-sm: 6px;
+  --padding-resource-item-y-xs: 4px;
+}

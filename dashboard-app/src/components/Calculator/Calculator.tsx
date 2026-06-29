@@ -4,7 +4,7 @@ import { useNumberCounter } from '../../hooks/useNumberCounter';
 import styles from './Calculator.module.css';
 import { toCapitalCase } from '../../utils/string';
 import { type TokenPrices } from '../../utils/priceService';
-import { MASTERY_YIELD_PER_LEVEL } from '../../utils/gameHelpers';
+import { getMasteryReductionPercent } from '../../utils/gameHelpers';
 
 interface CalculatorProps {
   dailyProduction: number; // base
@@ -40,16 +40,13 @@ export const Calculator: React.FC<CalculatorProps> = ({
   workshop,
   workers,
   boost,
-  levelYield
 }) => {
   const listRef = useRef<HTMLDivElement>(null);
 
   // ─── Bonus Calculations ───────────────────────────────────────────────────
-  // Mastery (Yield): Adds to the factory's base yield to reduce input requirements
-  // Effective yield = base level yield + (mastery * MASTERY_YIELD_PER_LEVEL)
-  const baseYield = levelYield || 100;
-  const effectiveYield = baseYield + mastery * MASTERY_YIELD_PER_LEVEL;
-  const finalInputMultiplier = baseYield / effectiveYield;
+  // Mastery reduces INPUT (Craft-Companion: input × (1 - reduction%))
+  const masteryInputMult = 1 - getMasteryReductionPercent(mastery) / 100;
+  const finalInputMultiplier = masteryInputMult;
 
   // Output per cycle is fixed (does not increase with mastery)
   const finalYieldPerCycle = outputPerCycle;
@@ -123,6 +120,15 @@ export const Calculator: React.FC<CalculatorProps> = ({
   const totalRevenueCoin = outputPrice ? targetProduction * outputPrice.sell : 0;
   const totalRevenueUsd = outputPrice ? targetProduction * outputPrice.usdSell : 0;
 
+  // Buy vs Craft comparison (cost per unit)
+  const costPerUnitCraft = inputs.reduce((sum, inp) => {
+    const price = prices?.[inp.name];
+    return sum + (price ? inp.amount * price.buy * finalInputMultiplier : 0);
+  }, 0);
+  const costPerUnitBuy = outputPrice ? outputPrice.buy : 0;
+  const craftIsCheaper = costPerUnitCraft > 0 && costPerUnitBuy > 0 && costPerUnitCraft < costPerUnitBuy;
+  const savingsPerUnit = costPerUnitBuy - costPerUnitCraft;
+
   const netProfitCoin = totalRevenueCoin - totalInputCostCoin;
   const netProfitUsd = totalRevenueUsd - totalInputCostUsd;
   const profitColorClass = netProfitCoin >= 0 ? styles.profitPositive : styles.profitNegative;
@@ -151,7 +157,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
     { label: 'Por Minuto', sec: 60 },
     { label: 'Por Hora', sec: 3600 },
     { label: 'Por Día (24h)', sec: 86400 },
-    { label: 'Por Semana (7d)', sec: 604800 }
+    { label: 'Por Semana (7d)', sec: 604800 },
+    { label: 'Por Mes (30d)', sec: 2592000 }
   ];
 
   const breakdownRows = INTERVALS.map(interval => {
@@ -332,6 +339,31 @@ export const Calculator: React.FC<CalculatorProps> = ({
                   </span>
                 </div>
               </div>
+
+              {/* Buy vs Craft comparison */}
+              {costPerUnitCraft > 0 && costPerUnitBuy > 0 && (
+                <div className={styles.buyVsCraftSection} style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                  <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>🆚 COMPRAR vs FABRICAR (por unidad)</h4>
+                  <div className={styles.financialRow}>
+                    <span>Comprar {outputName} en mercado:</span>
+                    <span className={styles.financialVal} style={{ color: '#f87171' }}>
+                      {formatCoin(costPerUnitBuy)} COIN
+                    </span>
+                  </div>
+                  <div className={styles.financialRow}>
+                    <span>Fabricar desde insumos:</span>
+                    <span className={styles.financialVal} style={{ color: craftIsCheaper ? '#39ff14' : '#f87171' }}>
+                      {formatCoin(costPerUnitCraft)} COIN
+                    </span>
+                  </div>
+                  <div className={styles.financialRow}>
+                    <span style={{ fontWeight: 700 }}>{craftIsCheaper ? '✅ Más barato fabricarlo' : savingsPerUnit > 0 ? '⚠️ Más barato comprarlo' : '—'}</span>
+                    <span className={styles.financialVal} style={{ color: '#fbbf24', fontWeight: 700 }}>
+                      {savingsPerUnit > 0 ? `Ahorras ${formatCoin(Math.abs(savingsPerUnit))} COIN/ud` : ''}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

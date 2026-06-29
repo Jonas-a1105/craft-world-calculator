@@ -117,8 +117,17 @@ export const PowerCalculator: React.FC<PowerCalculatorProps> = ({
       if (config.factories > 0 && FACTORIES_DATA[name]) {
         const levels = FACTORIES_DATA[name];
         const currentLvl = Math.max(1, Math.min(config.level, levels.length));
-        const powerCostPerFactory = levels[currentLvl - 1]?.power_cost || 0;
-        const totalPowerWatts = powerCostPerFactory * config.factories;
+        const levelData = levels[currentLvl - 1];
+        const powerCostPerFactory = levelData?.power_cost || 0;
+        const baseDurationSec = levelData?.duration_sec || 3600;
+
+        // Speed bonuses affect cycles per hour → power consumption per hour
+        const speedMod = 1 + (config.workshop / 100) + (config.workers / 100);
+        const boostMult = config.boost || 1;
+        const finalCycleDuration = Math.max(0.1, baseDurationSec / (speedMod * boostMult));
+        const cyclesPerHour = 3600 / finalCycleDuration;
+
+        const totalPowerWatts = powerCostPerFactory * cyclesPerHour * config.factories;
         grandTotalWatts += totalPowerWatts;
 
         list.push({

@@ -80,6 +80,19 @@ export interface PowerPlantInfo {
   activeBoosters?: Array<{ boosterId: string; expiresAt: string }>;
 }
 
+/** Per-factory instance data with individual level, boost, worker info, and crafting status */
+export interface FactoryInstanceData {
+  id: string;
+  symbol: string;
+  level: number;
+  boostMult: number;
+  workerPct: number;
+  globalBoostMult: number;
+  isActive: boolean;
+  currentRunLevel: number;
+  unclaimedUnits: number;
+}
+
 export interface PlayerAccountInfo {
   id: string;
   walletAddress: string;
@@ -131,6 +144,17 @@ export interface PlayerAccountInfo {
   uid?: string;
   avatarUrl?: string;
   lastDataRefresh?: number; // timestamp of last auto-refresh
+
+  // Global features and events from AggregatedCraftWorldDataQuery
+  features?: Array<{ name: string; active: boolean }>;
+  events?: Array<{
+    id: string;
+    name: string;
+    code: string;
+    startTime: string;
+    endTime: string;
+    minLevelIndex: number;
+  }>;
 }
 
 interface QueryAttempt {

@@ -6,8 +6,9 @@ import { toCapitalCase } from '../../utils/string';
 import type { TokenPrices, PriceData } from '../../utils/priceService';
 import type { UsePlayerConfigReturn, ResourceConfig } from '../../hooks/usePlayerConfig';
 import type { PriceDeltas } from '../../hooks/usePriceHistory';
-import { getCategory, getEmoji, MASTERY_YIELD_PER_LEVEL } from '../../utils/gameHelpers';
+import { getCategory, getEmoji, applyMasteryReduction, getMasteryYieldBonus, getWorkshopBoostPercent, applyWorkshopSpeedToDuration, applyFactoryBoostToDuration, getRunsPerHour } from '../../utils/gameHelpers';
 import type { PlayerAccountInfo, PlayerMine } from '../../utils/accountService';
+
 
 interface ResourceTableProps {
   prices: TokenPrices;
@@ -94,12 +95,10 @@ const ResourceRow: React.FC<ResourceRowProps> = React.memo(({
   tokenPrice,
   priceDelta,
   prices,
-  pricesLoading,
   maxLevel,
   balance,
   gameBalance,
-  factoryLevels,
-  coinPriceUsd
+  factoryLevels
 }) => {
   const levels = FACTORIES_DATA[name];
   const levelIdx = Math.min(cfg.level, maxLevel) - 1;
@@ -108,29 +107,26 @@ const ResourceRow: React.FC<ResourceRowProps> = React.memo(({
   const catColor = getCategoryColor(category);
   const catStars = getCategoryStars(category);
 
-  // Mastery (Yield): Adds to the factory's base yield to reduce input requirements
-  // Effective yield = base level yield + (mastery * MASTERY_YIELD_PER_LEVEL)
-  // Input is reduced proportionally: input * baseYield / effectiveYield
-  const baseYield = levelData.yield || 100;
-  const effectiveYield = baseYield + cfg.mastery * MASTERY_YIELD_PER_LEVEL;
-  const yieldFactor = baseYield / effectiveYield;
-  const finalInput1Amt = levelData.input1_amt * yieldFactor;
-  const finalInput2Amt = levelData.input2_amt * yieldFactor;
+  // Mastery reduces INPUT (Craft-Companion: input × (1 - reduction%))
+  const finalInput1Amt = applyMasteryReduction(levelData.input1_amt, cfg.mastery);
+  const finalInput2Amt = applyMasteryReduction(levelData.input2_amt, cfg.mastery);
 
-  // Workshop (% directo) + Workers (% directo) = reducción de tiempo
-  const speedModifier = 1 + (cfg.workshop / 100) + (cfg.workers / 100);
+  // Speed (Craft-Companion chain): workshop% → factory boost multiplier
+  const wsPct = getWorkshopBoostPercent(name, cfg.workshop);
+  const totalPct = wsPct + (cfg.workers || 0);
   const boostMult = cfg.boost || 1;
-  const finalCycleDurationSec = Math.max(0.1, levelData.duration_sec / (speedModifier * boostMult));
+  const durA = applyWorkshopSpeedToDuration(levelData.duration_sec, totalPct);
+  const durB = applyFactoryBoostToDuration(durA, boostMult);
+  const finalCycleDurationSec = Math.max(0.1, durB);
 
-  const cyclesPerHour = finalCycleDurationSec > 0 ? 3600 / finalCycleDurationSec : 0;
+  const cyclesPerHour = getRunsPerHour(finalCycleDurationSec);
   const cyclesPerDay = cyclesPerHour * 24;
   const powerCostPerHour = levelData.power_cost * cyclesPerHour * cfg.factories;
 
-  // Production breakdown
+  // Production breakdown — all scaled by factoryCount for consistency with profit columns
   const outputPerCycle = levelData.output || 0;
-  const outputPerMin = finalCycleDurationSec > 0 ? (outputPerCycle / (finalCycleDurationSec / 60)) : 0;
-  const outputPerHr = outputPerCycle * cyclesPerHour;
-  const outputPer24h = outputPerCycle * cyclesPerDay;
+  const outputPerHr = outputPerCycle * cyclesPerHour * cfg.factories;
+  const outputPer24h = outputPerCycle * cyclesPerDay * cfg.factories;
 
   // Economics
   let inputCostPerCycle = 0;
@@ -399,7 +395,7 @@ const ResourceRow: React.FC<ResourceRowProps> = React.memo(({
       <div className={`${styles.cell} ${styles.cellStatic}`}>
         {cfg.factories > 0 && cfg.mastery > 0 ? (
           <span className={styles.activeValue}>
-            {cfg.mastery} <span className={styles.percentSub}>({(cfg.mastery * MASTERY_YIELD_PER_LEVEL).toFixed(1)}%)</span>
+            {cfg.mastery} <span className={styles.percentSub}>({getMasteryYieldBonus(cfg.mastery).toFixed(1)}%)</span>
           </span>
         ) : (
           <span className={styles.inactiveValue}>—</span>

@@ -255,6 +255,20 @@
   color: var(--text-primary, #f8fafc);
 }
 
+/* ─── Bonus & Yield Row (side by side) ─── */
+.bonusYieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .bonusYieldRow {
+    grid-template-columns: 1fr;
+  }
+}
+
 .bonusRow {
   display: flex;
   flex-wrap: wrap;
@@ -284,4 +298,188 @@
   font-size: 0.8rem;
   font-weight: 700;
   color: #00f0ff;
+}
+
+/* ─── Factory Breakdown Section (full width) ─── */
+.breakdownSection {
+  margin-top: 12px;
+  background: rgba(18, 0, 33, 0.4);
+  border: 1px solid rgba(250, 64, 96, 0.1);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.breakdownHeader {
+  font-family: var(--font-title, Orbitron, sans-serif);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: rgba(168, 139, 200, 0.7);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(250, 64, 96, 0.08);
+}
+
+.factoryBreakdownGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.factoryCard {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(250, 64, 96, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+.factoryCard:hover {
+  border-color: rgba(250, 64, 96, 0.3);
+}
+
+.factoryCardInactive {
+  opacity: 0.55;
+}
+
+.factoryCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(250, 64, 96, 0.08);
+}
+
+.factoryCardIcon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.factoryCardTitleRow {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1px;
+}
+
+.factoryCardTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(168, 139, 200, 0.8);
+}
+
+.factoryCardStatus {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.factoryCardLevel {
+  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  white-space: nowrap;
+}
+
+/* ─── Factory Card Resources (inputs → output) ─── */
+.factoryCardResources {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(250, 64, 96, 0.06);
+}
+
+.factoryResInput,
+.factoryResOutput {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.factoryResInput {
+  border-right: 1px solid rgba(250, 64, 96, 0.08);
+  padding-right: 8px;
+}
+
+.factoryResOutput {
+  padding-left: 4px;
+}
+
+.factoryResArrow {
+  font-size: 1.1rem;
+  color: rgba(168, 139, 200, 0.4);
+  flex-shrink: 0;
+}
+
+.factoryResIcon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  margin-bottom: 1px;
+}
+
+.factoryResAmt {
+  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+}
+
+.factoryResName {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgba(168, 139, 200, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.factoryResCost {
+  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #38bdf8;
+}
+
+.factoryCardStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.factoryCardStat {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.factoryStatLabel {
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(168, 139, 200, 0.4);
+}
+
+.factoryStatValue {
+  font-family: var(--font-mono, JetBrains Mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchAllPrices, type TokenPrices, type PriceResult } from '../utils/priceService';
 
 export interface UseRealTimePricesReturn {
@@ -20,34 +20,35 @@ export function useRealTimePrices(intervalMs: number = 30000): UseRealTimePrices
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number>(0);
+  const mountedRef = useRef(true);
 
   const updatePrices = useCallback(async () => {
     try {
       setError(null);
       const data: PriceResult = await fetchAllPrices();
+      if (!mountedRef.current) return;
       setPrices(data.prices);
       setCoinPriceUsd(data.coinPriceUsd);
       setSource(data.source);
       setStale(data.stale);
       setLastUpdate(data.timestamp);
+      setLoading(false);
     } catch (err: any) {
+      if (!mountedRef.current) return;
       console.error("Error in useRealTimePrices hook:", err);
       setError(err?.message || "Failed to fetch real-time prices");
-    } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Initial fetch
+    mountedRef.current = true;
     updatePrices();
-
-    // Poll every intervalMs (default 30s)
     const timer = setInterval(() => {
       updatePrices();
     }, intervalMs);
-
     return () => {
+      mountedRef.current = false;
       clearInterval(timer);
     };
   }, [updatePrices, intervalMs]);
